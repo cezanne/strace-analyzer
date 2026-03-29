@@ -2,7 +2,7 @@ import optparse
 import logging
 import re
 import sys
-from parser import parseInputFiles
+from parser import parse_strace
 from utils import calc_file_access_stats, write_io_details, write_open_details
 
 
@@ -23,7 +23,6 @@ def main():
                       default="write_time,write_count,write_size,read_time,read_count,read_size,open_time,open_count",
                       help="Fields to display")
     parser.add_option('--sort-by', default="write_time", help="Property to sort by")
-    parser.add_option('--unknown-call-stats', action="store_true", default=False, help="Print untracked call stats")
 
     (options, args) = parser.parse_args()
     if not args:
@@ -33,7 +32,7 @@ def main():
     logging.basicConfig(level=getattr(logging, options.loglevel.upper()), format='%(levelname)s: %(message)s')
 
     # 1. Analyze data and calculate
-    file_access_stats, unknown_calls = parseInputFiles(args)
+    file_access_stats = parse_strace(args)
     calc_file_access_stats(file_access_stats)
 
     # 2. Set output format
@@ -58,11 +57,6 @@ def main():
                 row.append(f"{val:>12.6f}" if "_time" in p else f"{val:>12}")
             print(" ".join(row) + f" {data['filename']}")
             if options.file_details: save_file_details(data)
-
-    if options.unknown_call_stats:
-        print(f"\n{'=' * 30} UNKNOWN CALLS {'=' * 30}")
-        for name, info in sorted(unknown_calls.items(), key=lambda x: sum(x[1]['times']), reverse=True):
-            print(f"{name:16} Count: {info['count']:>8} Total Time: {sum(info['times']):>12.6f}")
 
 
 if __name__ == "__main__":

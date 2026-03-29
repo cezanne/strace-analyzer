@@ -1,25 +1,24 @@
 import re
 import logging
 import os
-from models import OpenFileTracker, new_file_access_stats_entry
+from models import new_file_access_stats_entry
+from open_file_tracker import OpenFileTracker
 
 
-def parseInputFiles(inputfiles):
+def parse_strace(strace_files):
     tracker = OpenFileTracker()
     file_stats = {}
-    unknown_calls = {}
 
     # Register default streams
     for std in [("stdin", 0), ("stdout", 1), ("stderr", 2)]:
         tracker.register_open(std[0], std[1])
         file_stats[std[0]] = new_file_access_stats_entry(std[0])
 
-    num_ignored_lines = 0
     unfinished = {}
 
-    for inputfile in inputfiles:
-        logging.info(f"Processing {inputfile} ...")
-        with open(inputfile, 'r') as fh:
+    for strace_file in strace_files:
+        logging.info(f"Processing {strace_file} ...")
+        with open(strace_file, 'r') as fh:
             for line in fh:
                 if "ERESTARTSYS" in line: continue
                 if "exit_group" in line: break
@@ -53,7 +52,7 @@ def parseInputFiles(inputfiles):
                     file_stats[fname]['open_times'].append(float(m.group('time')))
                     file_stats[fname]['open_modes'].append(m.group('mode'))
                     file_stats[fname]['open_fds'].append(fd)
-                    file_stats[fname]['open_from'][inputfile] = file_stats[fname]['open_from'].get(inputfile, 0) + 1
+                    file_stats[fname]['open_from'][strace_file] = file_stats[fname]['open_from'].get(strace_file, 0) + 1
                     continue
 
                 # 2. Write/Read (including V/64)
@@ -81,13 +80,4 @@ def parseInputFiles(inputfiles):
                         tracker.register_close(fd)
                     continue
 
-                # Handle other exceptions/unknown lines
-                num_ignored_lines += 1
-                m_unk = re.search(r'[0-9]+\.[0-9]+ (?P<func>.*?)\(.*\).*=.*<(?P<time>[0-9]+\.[0-9]+)>', line)
-                if m_unk:
-                    name = m_unk.group('func')
-                    if name not in unknown_calls: unknown_calls[name] = {'times': [], 'count': 0}
-                    unknown_calls[name]['times'].append(float(m_unk.group('time')))
-                    unknown_calls[name]['count'] += 1
-
-    return file_stats, unknown_calls
+    return file_stats

@@ -1,2 +1,4 @@
 /.idea
 /strace-logs
+/venv
+__pycache__

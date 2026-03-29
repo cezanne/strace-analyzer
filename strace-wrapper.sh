@@ -13,10 +13,10 @@ fi
 
 # Set the log filename with hostname and Process ID (PID)
 LOGFILE="$LOGDIR/$(hostname).$$.strace"
-
+SYSCALLS=open,openat,creat,close,read,write,pread64,pwrite64,readv,writev
 # Execute strace with the provided arguments ($@)
 # -f: Follow child processes
 # -r: Print relative timestamp
 # -T: Print time spent in system calls
 # -o: Write the trace output to a file
-strace -f -r -T -o "$LOGFILE" "$@"
+strace -f -r -T -e trace=$SYSCALLS -o "$LOGFILE" "$@"
